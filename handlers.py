@@ -3,7 +3,9 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from states import Form
+from config import W_TOKEN, WB_URL
 import aiohttp
+
 
 router = Router()
 
@@ -18,7 +20,7 @@ async def cmd_help(message: Message):
     await message.reply(
         "Доступные команды:\n"
         "/start - Начало работы\n"
-        "/form - Пример диалога\n"
+        "/set_profile - \n"
         "/keyboard - Пример кнопок\n"
         "/joke - Получить случайную шутку"
     )
@@ -80,12 +82,34 @@ async def process_city(message: Message, state: FSMContext):
     age = data.get("age")
     a_time = data.get("a_time")
     city = data.get("city")
-    await message.reply(f"""Ваши данные: \n
-                        Вес - {weight} кг \n
-                        Рост - {height} см \n
-                        Возраст - {age} лет \n
-                        Время активности - {a_time}
-                        Город - {city}""")
+    params = {"q": city,
+              "appid": W_TOKEN,
+              "units": "metric",}
+    async with aiohttp.ClientSession() as session:
+        async with session.get(WB_URL, params=params) as response:
+            if response.status == 200:
+                w = await response.json()
+                w = w["main"]["temp"]
+            else:
+                w = None
+    if w >= 25:
+        water = weight * 30 + 500
+    elif w >= 30:
+        water = weight * 30 + 1000
+    else:
+        water = weight * 30
+
+    await state.update_data(water_goal = water)
+    calories = weight * 10 + 6.25 * height - 5 * age
+    await state.update_data(calories_goal = calories)
+    await message.reply("Ваши данные:\n"
+                        f"Вес - {weight} кг \n"
+                        f"Рост - {height} см \n"
+                        f"Возраст - {age} лет \n"
+                        f"Время активности - {a_time} Город - {city} \n"
+                        f"Норма потребления воды - {water} мл \n"
+                        f"Норма калорий - {calories}"
+                        )
     await state.clear()
 
 # Получение шутки из API
