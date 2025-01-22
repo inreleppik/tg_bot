@@ -49,31 +49,31 @@ async def start_sp(message: Message, state: FSMContext):
 
 @router.message(Form.weight)
 async def process_weight(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
+    await state.update_data(weight=message.text)
     await message.reply("Введите ваш рост (в см):")
     await state.set_state(Form.height)
 
 @router.message(Form.height)
 async def process_height(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
+    await state.update_data(height=message.text)
     await message.reply("Введите ваш возраст:")
     await state.set_state(Form.age)
 
 @router.message(Form.age)
 async def process_age(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
+    await state.update_data(age=message.text)
     await message.reply("Сколько минут активности у вас в день?")
     await state.set_state(Form.a_time)
 
 @router.message(Form.a_time)
-async def process_age(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
+async def process_a_time(message: Message, state: FSMContext):
+    await state.update_data(a_time=message.text)
     await message.reply("В каком городе вы находитесь?")
     await state.set_state(Form.city)
 
 @router.message(Form.city)
-async def process_age(message: Message, state: FSMContext):
-    await state.update_data(name=message.text)
+async def process_city(message: Message, state: FSMContext):
+    await state.update_data(city=message.text)
     data = await state.get_data()
     weight = data.get("weight")
     height = data.get("height")
