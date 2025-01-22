@@ -77,39 +77,55 @@ async def process_a_time(message: Message, state: FSMContext):
 async def process_city(message: Message, state: FSMContext):
     await state.update_data(city=message.text)
     data = await state.get_data()
-    weight = int(data.get("weight"))
-    height = int(data.get("height"))
-    age = int(data.get("age"))
-    a_time = int(data.get("a_time"))
-    city = int(data.get("city"))
-    params = {"q": city,
-              "appid": W_TOKEN,
-              "units": "metric",}
+
+    try:
+        weight = int(data.get("weight"))
+        height = int(data.get("height"))
+        age = int(data.get("age"))
+        a_time = int(data.get("a_time"))
+        city = data.get("city")
+    except ValueError:
+        await message.reply("Некорректные данные. Пожалуйста, начните заново.")
+        await state.clear()
+        return
+
+    params = {
+        "q": city,
+        "appid": W_TOKEN,
+        "units": "metric",
+    }
     async with aiohttp.ClientSession() as session:
         async with session.get(WB_URL, params=params) as response:
             if response.status == 200:
                 w = await response.json()
                 w = float(w["main"]["temp"])
             else:
-                w = None
-    if w >= 25:
-        water = weight * 30 + 500
-    elif w >= 30:
+                await message.reply("Не удалось получить данные о погоде. Проверьте название города.")
+                await state.clear()
+                return
+
+    if w >= 30:
         water = weight * 30 + 1000
+    elif w >= 25:
+        water = weight * 30 + 500
     else:
         water = weight * 30
 
-    await state.update_data(water_goal = water)
-    calories = weight * 10 + 6.25 * height - 5 * age
-    await state.update_data(calories_goal = calories)
-    await message.reply("Ваши данные:\n"
-                        f"Вес - {weight} кг \n"
-                        f"Рост - {height} см \n"
-                        f"Возраст - {age} лет \n"
-                        f"Время активности - {a_time} Город - {city} \n"
-                        f"Норма потребления воды - {water} мл \n"
-                        f"Норма калорий - {calories}"
-                        )
+    calories = weight * 10 + 6.25 * height - 5 * age  # Формула для мужчин
+    calories *= 1.2  # Коэффициент активности (например, 1.2 для низкой)
+
+    await state.update_data(water_goal=water, calories_goal=calories)
+
+    await message.reply(
+        f"Ваши данные:\n"
+        f"Вес: {weight} кг\n"
+        f"Рост: {height} см\n"
+        f"Возраст: {age} лет\n"
+        f"Время активности: {a_time} минут\n"
+        f"Город: {city}\n"
+        f"Норма потребления воды: {water} мл\n"
+        f"Норма калорий: {calories} ккал."
+    )
     await state.clear()
 
 # Получение шутки из API
