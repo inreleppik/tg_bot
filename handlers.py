@@ -77,11 +77,11 @@ async def process_a_time(message: Message, state: FSMContext):
 async def process_city(message: Message, state: FSMContext):
     await state.update_data(city=message.text)
     data = await state.get_data()
-    weight = data.get("weight")
-    height = data.get("height")
-    age = data.get("age")
-    a_time = data.get("a_time")
-    city = data.get("city")
+    weight = int(data.get("weight"))
+    height = int(data.get("height"))
+    age = int(data.get("age"))
+    a_time = int(data.get("a_time"))
+    city = int(data.get("city"))
     params = {"q": city,
               "appid": W_TOKEN,
               "units": "metric",}
@@ -89,7 +89,7 @@ async def process_city(message: Message, state: FSMContext):
         async with session.get(WB_URL, params=params) as response:
             if response.status == 200:
                 w = await response.json()
-                w = w["main"]["temp"]
+                w = float(w["main"]["temp"])
             else:
                 w = None
     if w >= 25:
