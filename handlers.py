@@ -255,6 +255,7 @@ async def process_lw(message: Message, state: FSMContext):
 async def start_lf(message: Message, state: FSMContext):
     # Начальный запрос к пользователю без изменения состояния
     await message.reply("Какой продукт вы употребили?")
+    await state.set_state(Form.logged_calories)
 
 
 @router.message(Form.logged_calories)
