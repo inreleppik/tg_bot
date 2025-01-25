@@ -257,32 +257,54 @@ async def process_lw(message: Message, state: FSMContext):
 @router.message(Command("log_food"))
 async def start_lf(message: Message, state: FSMContext):
     await message.reply("Какой продукт вы употребили?")
-    await state.set_state(Form.logged_calories)
+    # Здесь состояние не меняется, логика продолжается без обновления state
 
 @router.message(Form.logged_calories)
 async def process_lf(message: Message, state: FSMContext):
-    product_eng = await translate_yandex(T_TOKEN, message.text)
-    product = message.text
-    product_data = get_calories_data(product_eng, CN_TOKEN)
-    if not product_data:
-        await message.reply("Не удалось найти информацию о продукте. Попробуйте указать его более точно.")
-        return
-    cp100 = product_data[0].get("calories", "Не указано")
+    try:
+        product_eng = await translate_yandex(T_TOKEN, message.text)  # Перевод на английский
+        product = message.text
 
-    await message.reply(
-        f"Продукт: {product}\n"
-        f"Калорийность: {cp100} ккал на 100 г \n"
-        "Сколько грамм вы съели?"
-    )
-    gs = float(message.text)
-    p_calories = cp100 * gs /100
-    data = await state.get_data()
-    initial_state = float(data.get("logged_calories", 0))
-    current_state = initial_state + p_calories
+        # Получение данных о калорийности
+        product_data = await get_calories_data(product_eng, CN_TOKEN)
+        if not product_data:
+            await message.reply("Не удалось найти информацию о продукте. Попробуйте указать его более точно.")
+            return
 
-    await state.update_data(logged_calories=current_state)
+        # Получаем данные о калориях
+        cp100 = product_data[0].get("calories")
+        if not isinstance(cp100, (int, float)):
+            await message.reply("Калорийность продукта не указана. Попробуйте другой продукт.")
+            return
 
-    await message.reply(f"Записано: {p_calories} ккал")
+        # Сообщаем пользователю калорийность и запрашиваем вес
+        await message.reply(
+            f"Продукт: {product}\n"
+            f"Калорийность: {cp100} ккал на 100 г.\n"
+            "Сколько грамм вы съели?"
+        )
+
+        # Ждем ответ пользователя
+        grams = float((await state.proxy()).get("grams", message.text))
+        if grams <= 0:
+            await message.reply("Введите положительное значение граммов.")
+            return
+
+        # Рассчитываем калории
+        p_calories = cp100 * grams / 100
+
+        # Обновляем данные о логах калорий
+        data = await state.get_data()
+        initial_state = float(data.get("logged_calories", 0))
+        current_state = initial_state + p_calories
+        await state.update_data(logged_calories=current_state)
+
+        await message.reply(
+            f"Записано: {p_calories:.2f} ккал.\n"
+            f"Общий потреблённый объём калорий: {current_state:.2f} ккал."
+        )
+    except ValueError:
+        await message.reply("Введите корректное числовое значение.")
 
 
 # Функция для подключения обработчиков
