@@ -27,6 +27,23 @@ def make_column_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
     keyboard = [[KeyboardButton(text=item) for item in row] for row in rows]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
+def get_activity_c(level: str):
+    coefs = {"1-2": 1.2,
+             "3-4": 1.375,
+             "5-6": 1.55,
+             "7-8": 1.725,
+             "9-10": 1.9}
+    return coefs.get(level, 0)
+
+def calculate_bmr(weight: float, height: float, age: int, gender: str) -> float:
+
+    if gender == 'Мужской':
+        return 10 * weight + 6.25 * height - 5 * age + 5
+    elif gender == 'Женский':
+        return 10 * weight + 6.25 * height - 5 * age - 161
+    else:
+        raise ValueError("Некорректный пол. Используйте 'Мужской' или 'Женский'.")
+
 router = Router()
 
 # Обработчик команды /start
@@ -96,11 +113,11 @@ async def process_city(message: Message, state: FSMContext):
     data = await state.get_data()
 
     try:
-        gender = data.get("gender")
+        gender = str(data.get("gender"))
         weight = int(data.get("weight"))
         height = int(data.get("height"))
         age = int(data.get("age"))
-        activity = data.get("activity")
+        activity = str(data.get("activity"))
         city = data.get("city")
     except ValueError:
         await message.reply("Некорректные данные. Пожалуйста, начните заново.")
@@ -129,8 +146,8 @@ async def process_city(message: Message, state: FSMContext):
     else:
         water = weight * 30
 
-    calories = weight * 10 + 6.25 * height - 5 * age  # Формула для мужчин
-    calories *= 1.2  # Коэффициент активности (например, 1.2 для низкой)
+    calories = calculate_bmr(weight, height, age, gender)  # Формула для мужчин
+    calories *= get_activity_c(activity)  # Коэффициент активности (например, 1.2 для низкой)
 
     await state.update_data(water_goal=water, calories_goal=calories)
 
