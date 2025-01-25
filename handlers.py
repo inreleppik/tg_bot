@@ -3,8 +3,9 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKey
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from states import Form
-from config import W_TOKEN, WB_URL
+from config import W_TOKEN, WB_URL, T_TOKEN, CN_TOKEN
 import aiohttp
+import asyncio
 
 def make_row_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
     """
@@ -26,6 +27,38 @@ def make_column_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
     # Создаём кнопки и группируем их по строкам
     keyboard = [[KeyboardButton(text=item) for item in row] for row in rows]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
+async def translate_yandex(api_key: str, text: str, source_language: str = "ru", target_language: str = "en"):
+    """
+    Асинхронная функция для перевода текста с использованием Yandex Translator API.
+    
+    :param api_key: Ваш API-ключ Yandex Translator.
+    :param text: Текст для перевода.
+    :param source_language: Исходный язык текста (по умолчанию "ru").
+    :param target_language: Целевой язык текста (по умолчанию "en").
+    :return: Переведённый текст или сообщение об ошибке.
+    """
+    url = "https://translate.api.cloud.yandex.net/translate/v2/translate"
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Api-Key {api_key}"
+    }
+
+    data = {
+        "targetLanguageCode": target_language,
+        "texts": [text],
+        "sourceLanguageCode": source_language
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, json=data, headers=headers) as response:
+            if response.status == 200:
+                result = await response.json()
+                return result["translations"][0]["text"]
+            else:
+                error = await response.text()
+                return f"Ошибка: {response.status}, {error}"
 
 def get_activity_c(level: str):
     coefs = {"1-2": 1.2,
@@ -125,7 +158,7 @@ async def process_city(message: Message, state: FSMContext):
         return
 
     params = {
-        "q": city,
+        "q": await translate_yandex(T_TOKEN, city),
         "appid": W_TOKEN,
         "units": "metric",
     }
