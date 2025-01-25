@@ -1,11 +1,19 @@
 from aiogram import Router
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from states import Form
 from config import W_TOKEN, WB_URL
 import aiohttp
 
+def make_row_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
+    """
+    Создаёт реплай-клавиатуру с кнопками в один ряд
+    :param items: список текстов для кнопок
+    :return: объект реплай-клавиатуры
+    """
+    row = [KeyboardButton(text=item) for item in items]
+    return ReplyKeyboardMarkup(keyboard=[row], resize_keyboard=True)
 
 router = Router()
 
@@ -21,7 +29,6 @@ async def cmd_help(message: Message):
         "Доступные команды:\n"
         "/start - Начало работы\n"
         "/set_profile - Настройка профиля\n"
-        "/keyboard - Пример кнопок\n"
         "/joke - Получить случайную шутку"
     )
 
@@ -29,6 +36,13 @@ async def cmd_help(message: Message):
 # FSM: диалог с пользователем
 @router.message(Command("set_profile"))
 async def start_sp(message: Message, state: FSMContext):
+    await message.reply(text = "Выберите ваш пол:",
+                        reply_markup = make_row_keyboard(['Мужской','Женский']))
+    await state.set_state(Form.gender)
+
+@router.message(Form.gender)
+async def process_gender(message: Message, state: FSMContext):
+    await state.update_data(gender = message.text)
     await message.reply("Введите ваш вес (в кг):")
     await state.set_state(Form.weight)
 
@@ -62,6 +76,7 @@ async def process_city(message: Message, state: FSMContext):
     data = await state.get_data()
 
     try:
+        gender = data.get("gender")
         weight = int(data.get("weight"))
         height = int(data.get("height"))
         age = int(data.get("age"))
@@ -101,6 +116,7 @@ async def process_city(message: Message, state: FSMContext):
 
     await message.reply(
         f"Ваши данные:\n"
+        f"Пол: {gender}\n"
         f"Вес: {weight} кг\n"
         f"Рост: {height} см\n"
         f"Возраст: {age} лет\n"
