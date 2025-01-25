@@ -1,5 +1,5 @@
 from aiogram import Router
-from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from states import Form
@@ -43,7 +43,8 @@ async def start_sp(message: Message, state: FSMContext):
 @router.message(Form.gender)
 async def process_gender(message: Message, state: FSMContext):
     await state.update_data(gender = message.text)
-    await message.reply("Введите ваш вес (в кг):")
+    await message.reply("Введите ваш вес (в кг):", 
+                        reply_markup=ReplyKeyboardRemove())
     await state.set_state(Form.weight)
 
 @router.message(Form.weight)
