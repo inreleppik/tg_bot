@@ -59,7 +59,29 @@ async def translate_yandex(api_key: str, text: str, source_language: str = "ru",
             else:
                 error = await response.text()
                 return f"Ошибка: {response.status}, {error}"
+            
 
+async def get_calories_data(product_name: str, api_key: str):
+    """
+    Асинхронная функция для получения калорийности продуктов с Calorieninjas API.
+    
+    :param product_name: Название продукта (например, "яблоко").
+    :param api_key: Ваш API-ключ для Calorieninjas.
+    :return: Словарь с информацией о продукте или None, если запрос не успешен.
+    """
+    url = "https://api.calorieninjas.com/v1/nutrition"
+    headers = {"X-Api-Key": api_key}
+    params = {"query": product_name}
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            if response.status == 200:
+                data = await response.json()
+                return data.get("items", [])
+            else:
+                print(f"Ошибка: {response.status}")
+                return None
+            
 def get_activity_c(level: str):
     coefs = {"1-2": 1.2,
              "3-4": 1.375,
@@ -231,6 +253,36 @@ async def process_lw(message: Message, state: FSMContext):
         )
     except ValueError:
         await message.reply("Пожалуйста, введите корректное число.")
+
+@router.message(Command("log_food"))
+async def start_lf(message: Message, state: FSMContext):
+    await message.reply("Какой продукт вы употребили?")
+    await state.set_state(Form.logged_calories)
+
+@router.message(Form.logged_calories)
+async def process_lf(message: Message, state: FSMContext):
+    product_eng = await translate_yandex(T_TOKEN, message.text)
+    product = message.text
+    product_data = get_calories_data(product_eng, CN_TOKEN)
+    if not product_data:
+        await message.reply("Не удалось найти информацию о продукте. Попробуйте указать его более точно.")
+        return
+    cp100 = product_data[0].get("calories", "Не указано")
+
+    await message.reply(
+        f"Продукт: {product}\n"
+        f"Калорийность: {cp100} ккал на 100 г \n"
+        "Сколько грамм вы съели?"
+    )
+    gs = float(message.text)
+    p_calories = cp100 * gs /100
+    data = await state.get_data()
+    initial_state = float(data.get("logged_calories", 0))
+    current_state = initial_state + p_calories
+
+    await state.update_data(logged_calories=current_state)
+
+    await message.reply(f"Записано: {p_calories} ккал")
 
 
 # Функция для подключения обработчиков
