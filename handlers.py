@@ -15,6 +15,18 @@ def make_row_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
     row = [KeyboardButton(text=item) for item in items]
     return ReplyKeyboardMarkup(keyboard=[row], resize_keyboard=True)
 
+def make_column_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
+    """
+    Создаёт реплай-клавиатуру с кнопками, расположенными в две колонки
+    :param items: список текстов для кнопок
+    :return: объект реплай-клавиатуры
+    """
+    # Разделяем список на строки по 2 элемента
+    rows = [items[i:i+2] for i in range(0, len(items), 2)]
+    # Создаём кнопки и группируем их по строкам
+    keyboard = [[KeyboardButton(text=item) for item in row] for row in rows]
+    return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
+
 router = Router()
 
 # Обработчик команды /start
@@ -62,13 +74,20 @@ async def process_height(message: Message, state: FSMContext):
 @router.message(Form.age)
 async def process_age(message: Message, state: FSMContext):
     await state.update_data(age=message.text)
-    await message.reply("Сколько минут активности у вас в день?")
-    await state.set_state(Form.a_time)
+    await message.reply("Выберите соответствующий свой уровень активности из следующих:"
+                        "1-2: сидячий образ жизни \n"
+                        "3-4: легкая физ. нагружка 1-3 раза в неделю \n"
+                        "5-6: умеренные тренировки 3-5 раз в неделю \n"
+                        "7-8: интенсивные тренировки 6-7 раз в неделю \n"
+                        "9-10: тяжелая физ. нагрузка или проф. спорт")
+    await message.reply(text = "Выберите свой уровень:",
+                        reply_markup=make_column_keyboard(["1-2", "3-4", "5-6", "7-8", "9-10"]))
+    await state.set_state(Form.activity)
 
 @router.message(Form.a_time)
 async def process_a_time(message: Message, state: FSMContext):
-    await state.update_data(a_time=message.text)
-    await message.reply("В каком городе вы находитесь?")
+    await state.update_data(activity=message.text)
+    await message.reply("В каком городе вы находитесь?", reply_markup=ReplyKeyboardRemove())
     await state.set_state(Form.city)
 
 @router.message(Form.city)
@@ -81,7 +100,7 @@ async def process_city(message: Message, state: FSMContext):
         weight = int(data.get("weight"))
         height = int(data.get("height"))
         age = int(data.get("age"))
-        a_time = int(data.get("a_time"))
+        activity = data.get("activity")
         city = data.get("city")
     except ValueError:
         await message.reply("Некорректные данные. Пожалуйста, начните заново.")
@@ -121,20 +140,14 @@ async def process_city(message: Message, state: FSMContext):
         f"Вес: {weight} кг\n"
         f"Рост: {height} см\n"
         f"Возраст: {age} лет\n"
-        f"Время активности: {a_time} минут\n"
+        f"Уровень активности: {activity}\n"
         f"Город: {city}\n"
         f"Норма потребления воды: {water} мл\n"
         f"Норма калорий: {calories} ккал."
     )
     await state.clear()
 
-# Получение шутки из API
-@router.message(Command("joke"))
-async def get_joke(message: Message):
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.chucknorris.io/jokes/random") as response:
-            joke = await response.json()
-            await message.reply(joke["value"])
+
 
 # Функция для подключения обработчиков
 def setup_handlers(dp):

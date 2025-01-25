@@ -5,5 +5,8 @@ class Form(StatesGroup):
     weight = State()
     height = State()
     age = State()
+    level_a = State()
+    activity = State()
+    type_a = State()
     a_time = State()
     city = State()
