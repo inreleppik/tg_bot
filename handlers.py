@@ -150,7 +150,7 @@ async def process_city(message: Message, state: FSMContext):
     calories *= get_activity_c(activity)  
 
     await state.update_data(water_goal=water, calories_goal=calories)
-    await state.updade_data(logged_water = 0, logged_calories = 0, burned_calories = 0)
+    await state.update_data(logged_water = 0, logged_calories = 0, burned_calories = 0)
 
     await message.reply(
         f"Ваши данные:\n"
