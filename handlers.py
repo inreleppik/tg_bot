@@ -1,5 +1,5 @@
 from aiogram import Router
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, CallbackQuery
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from states import Form
@@ -20,7 +20,8 @@ async def cmd_help(message: Message):
     await message.reply(
         "Доступные команды:\n"
         "/start - Начало работы\n"
-        "/set_profile - Ввод данных профиля\n"
+        "/set_profile - Настройка профиля\n"
+        "/keyboard - Пример кнопок\n"
         "/joke - Получить случайную шутку"
     )
 
@@ -28,63 +29,32 @@ async def cmd_help(message: Message):
 # FSM: диалог с пользователем
 @router.message(Command("set_profile"))
 async def start_sp(message: Message, state: FSMContext):
-    gender_keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="Мужчина", callback_data="Мужской")],
-            [InlineKeyboardButton(text="Женщина", callback_data="Женский")],
-        ]
-    )
-
-    await message.reply("Выберите ваш пол:", reply_markup=gender_keyboard)
-    await state.set_state(Form.gender)
-
-@router.callback_query(lambda c: c.data in ["Мужской", "Женский"])
-async def process_gender(callback_query: CallbackQuery, state: FSMContext):
-    gender = callback_query.data  # Получаем значение из callback_data
-    await state.update_data(gender=gender)  # Сохраняем пол в состоянии
-    await callback_query.message.reply("Введите ваш вес (в кг):", reply_markup=ReplyKeyboardRemove())
+    await message.reply("Введите ваш вес (в кг):")
     await state.set_state(Form.weight)
-    await callback_query.answer() 
 
 @router.message(Form.weight)
 async def process_weight(message: Message, state: FSMContext):
-    try:
-        weight = int(message.text)
-        await state.update_data(weight=weight)
-        await message.reply("Введите ваш рост (в см):")
-        await state.set_state(Form.height)
-    except ValueError:
-        await message.reply("Пожалуйста, введите корректное значение веса.")
+    await state.update_data(weight=message.text)
+    await message.reply("Введите ваш рост (в см):")
+    await state.set_state(Form.height)
 
 @router.message(Form.height)
 async def process_height(message: Message, state: FSMContext):
-    try:
-        height = int(message.text)
-        await state.update_data(height=height)
-        await message.reply("Введите ваш возраст:")
-        await state.set_state(Form.age)
-    except ValueError:
-        await message.reply("Пожалуйста, введите корректное значение роста.")
+    await state.update_data(height=message.text)
+    await message.reply("Введите ваш возраст:")
+    await state.set_state(Form.age)
 
 @router.message(Form.age)
 async def process_age(message: Message, state: FSMContext):
-    try:
-        age = int(message.text)
-        await state.update_data(age=age)
-        await message.reply("Сколько минут активности у вас в день?")
-        await state.set_state(Form.a_time)
-    except ValueError:
-        await message.reply("Пожалуйста, введите корректное значение возраста.")
+    await state.update_data(age=message.text)
+    await message.reply("Сколько минут активности у вас в день?")
+    await state.set_state(Form.a_time)
 
 @router.message(Form.a_time)
 async def process_a_time(message: Message, state: FSMContext):
-    try:
-        a_time = int(message.text)
-        await state.update_data(a_time=a_time)
-        await message.reply("В каком городе вы находитесь?")
-        await state.set_state(Form.city)
-    except ValueError:
-        await message.reply("Пожалуйста, введите корректное значение времени активности.")
+    await state.update_data(a_time=message.text)
+    await message.reply("В каком городе вы находитесь?")
+    await state.set_state(Form.city)
 
 @router.message(Form.city)
 async def process_city(message: Message, state: FSMContext):
@@ -97,7 +67,6 @@ async def process_city(message: Message, state: FSMContext):
         age = int(data.get("age"))
         a_time = int(data.get("a_time"))
         city = data.get("city")
-        gender = data.get("gender")
     except ValueError:
         await message.reply("Некорректные данные. Пожалуйста, начните заново.")
         await state.clear()
@@ -125,19 +94,13 @@ async def process_city(message: Message, state: FSMContext):
     else:
         water = weight * 30
 
-    # Учитываем пол при расчёте калорий
-    if gender == "Мужчина":
-        calories = weight * 10 + 6.25 * height - 5 * age + 5
-    else:
-        calories = weight * 10 + 6.25 * height - 5 * age - 161
-
+    calories = weight * 10 + 6.25 * height - 5 * age  # Формула для мужчин
     calories *= 1.2  # Коэффициент активности (например, 1.2 для низкой)
 
     await state.update_data(water_goal=water, calories_goal=calories)
 
     await message.reply(
         f"Ваши данные:\n"
-        f"Пол: {gender}\n"
         f"Вес: {weight} кг\n"
         f"Рост: {height} см\n"
         f"Возраст: {age} лет\n"
@@ -147,7 +110,6 @@ async def process_city(message: Message, state: FSMContext):
         f"Норма калорий: {calories} ккал."
     )
     await state.clear()
-
 
 # Получение шутки из API
 @router.message(Command("joke"))
