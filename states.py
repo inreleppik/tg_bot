@@ -10,3 +10,9 @@ class Form(StatesGroup):
     type_a = State()
     a_time = State()
     city = State()
+    water_goal = State()
+    calories_goal = State()
+    logged_water = State()
+    logged_calories = State()
+    burned_calories = State()
+    

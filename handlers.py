@@ -146,10 +146,11 @@ async def process_city(message: Message, state: FSMContext):
     else:
         water = weight * 30
 
-    calories = calculate_bmr(weight, height, age, gender)  # Формула для мужчин
-    calories *= get_activity_c(activity)  # Коэффициент активности (например, 1.2 для низкой)
+    calories = calculate_bmr(weight, height, age, gender)  
+    calories *= get_activity_c(activity)  
 
     await state.update_data(water_goal=water, calories_goal=calories)
+    await state.updade_data(logged_water = 0, logged_calories = 0, burned_calories = 0)
 
     await message.reply(
         f"Ваши данные:\n"
@@ -162,8 +163,26 @@ async def process_city(message: Message, state: FSMContext):
         f"Норма потребления воды: {water} мл\n"
         f"Норма калорий: {calories} ккал."
     )
-    await state.clear()
 
+@router.message(Command("log_water"))
+async def start_lw(message: Message, state: FSMContext):
+    await message.reply("Введите выпитое вами количество воды в мл:")
+    await state.set_state(Form.logged_water)
+
+@router.message(Form.logged_water)
+async def process_lw(message: Message, state: FSMContext):
+    data = await state.get_data()
+    initial_state = float(data.get("logged_water"))
+    water_goal = float(data.get("water_goar"))
+    new_water = float(message.text)
+    u_g = water_goal - new_water
+    current_state = initial_state + new_water
+    await state.update_data(logged_water = current_state)
+    await message.reply(
+        f"Сейчас вы выпили {new_water} мл воды \n"
+        f"Всего было выпито: {current_state} мл воды\n"
+        f"До цели осталось {u_g} мл воды\n"
+    )
 
 
 # Функция для подключения обработчиков
