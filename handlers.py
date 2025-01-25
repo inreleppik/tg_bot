@@ -61,25 +61,20 @@ async def translate_yandex(api_key: str, text: str, source_language: str = "ru",
                 return f"Ошибка: {response.status}, {error}"
             
 
-async def get_calories_data(product_name: str, api_key: str):
+async def get_calories_data_async(product_name: str, api_key: str):
     """
-    Асинхронная функция для получения калорийности продуктов с Calorieninjas API.
-    
-    :param product_name: Название продукта (например, "яблоко").
-    :param api_key: Ваш API-ключ для Calorieninjas.
-    :return: Словарь с информацией о продукте или None, если запрос не успешен.
+    Асинхронный запрос к Calorieninjas API для получения данных о калорийности продукта.
     """
     url = "https://api.calorieninjas.com/v1/nutrition"
     headers = {"X-Api-Key": api_key}
     params = {"query": product_name}
-    
+
     async with aiohttp.ClientSession() as session:
         async with session.get(url, headers=headers, params=params) as response:
             if response.status == 200:
                 data = await response.json()
                 return data.get("items", [])
             else:
-                print(f"Ошибка: {response.status}")
                 return None
             
 def get_activity_c(level: str):
@@ -256,36 +251,38 @@ async def process_lw(message: Message, state: FSMContext):
 
 @router.message(Command("log_food"))
 async def start_lf(message: Message, state: FSMContext):
+    # Начальный запрос к пользователю без изменения состояния
     await message.reply("Какой продукт вы употребили?")
-    # Здесь состояние не меняется, логика продолжается без обновления state
+
 
 @router.message(Form.logged_calories)
 async def process_lf(message: Message, state: FSMContext):
     try:
-        product_eng = await translate_yandex(T_TOKEN, message.text)  # Перевод на английский
+        # Перевод продукта на английский (например, с Yandex API)
+        product_eng = await translate_yandex(T_TOKEN, message.text)
         product = message.text
 
-        # Получение данных о калорийности
-        product_data = await get_calories_data(product_eng, CN_TOKEN)
+        # Асинхронный запрос к API для получения данных о калориях
+        product_data = await get_calories_data_async(product_eng, CN_TOKEN)
         if not product_data:
             await message.reply("Не удалось найти информацию о продукте. Попробуйте указать его более точно.")
             return
 
-        # Получаем данные о калориях
+        # Получаем калорийность на 100 г
         cp100 = product_data[0].get("calories")
         if not isinstance(cp100, (int, float)):
             await message.reply("Калорийность продукта не указана. Попробуйте другой продукт.")
             return
 
-        # Сообщаем пользователю калорийность и запрашиваем вес
+        # Запрашиваем количество граммов у пользователя
         await message.reply(
             f"Продукт: {product}\n"
             f"Калорийность: {cp100} ккал на 100 г.\n"
             "Сколько грамм вы съели?"
         )
 
-        # Ждем ответ пользователя
-        grams = float((await state.proxy()).get("grams", message.text))
+        # Получаем данные о количестве граммов
+        grams = float(message.text)
         if grams <= 0:
             await message.reply("Введите положительное значение граммов.")
             return
@@ -293,16 +290,18 @@ async def process_lf(message: Message, state: FSMContext):
         # Рассчитываем калории
         p_calories = cp100 * grams / 100
 
-        # Обновляем данные о логах калорий
+        # Обновляем лог калорий в состоянии
         data = await state.get_data()
         initial_state = float(data.get("logged_calories", 0))
         current_state = initial_state + p_calories
         await state.update_data(logged_calories=current_state)
 
+        # Сообщаем пользователю об обновлении
         await message.reply(
             f"Записано: {p_calories:.2f} ккал.\n"
             f"Общий потреблённый объём калорий: {current_state:.2f} ккал."
         )
+
     except ValueError:
         await message.reply("Введите корректное числовое значение.")
 
