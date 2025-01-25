@@ -28,8 +28,12 @@ async def cmd_help(message: Message):
 # FSM: диалог с пользователем
 @router.message(Command("set_profile"))
 async def start_sp(message: Message, state: FSMContext):
-    gender_keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    gender_keyboard.add(KeyboardButton("Мужчина"), KeyboardButton("Женщина"))
+    gender_keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Мужчина"), KeyboardButton(text="Женщина")]
+        ],
+        resize_keyboard=True
+    )
 
     await message.reply("Выберите ваш пол:", reply_markup=gender_keyboard)
     await state.set_state(Form.gender)
