@@ -188,7 +188,6 @@ async def process_city(message: Message, state: FSMContext):
                 w = float(w["main"]["temp"])
             else:
                 await message.reply("Не удалось получить данные о погоде. Проверьте название города.")
-                await state.clear()
                 return
 
     if w >= 30:
@@ -262,6 +261,7 @@ async def start_lf(message: Message, state: FSMContext):
 async def process_lf(message: Message, state: FSMContext):
     try:
         # Перевод продукта на английский (например, с Yandex API)
+        product_name = str(message.text)
         product_eng = await translate_yandex(T_TOKEN, message.text)
         if not product_eng:
             await message.reply("Не удалось перевести название продукта. Попробуйте снова.")
@@ -290,36 +290,19 @@ async def process_lf(message: Message, state: FSMContext):
             f"Калорийность: {cp100} ккал на 100 г.\n"
             "Сколько грамм вы съели?"
         )
-
-    except Exception as e:
-        # Обработка общих ошибок
-        await message.reply("Произошла ошибка. Попробуйте снова.")
-        print(f"Ошибка: {e}")
-
-
-@router.message(Form.logged_calories)
-async def process_grams(message: Message, state: FSMContext):
-    try:
-        # Получаем количество граммов от пользователя
         grams = float(message.text)
         if grams <= 0:
             await message.reply("Введите положительное значение граммов.")
             return
-
-        # Получаем данные из состояния
+        
         data = await state.get_data()
-        cp100 = float(data.get("calories_per_100g", 0))
-        product_name = data.get("product_name", "неизвестный продукт")
-
-        # Рассчитываем калории
+        
         p_calories = cp100 * grams / 100
 
-        # Обновляем лог калорий в состоянии
         initial_state = float(data.get("logged_calories", 0))
         current_state = initial_state + p_calories
         await state.update_data(logged_calories=current_state)
 
-        # Сообщаем пользователю об обновлении
         await message.reply(
             f"Продукт: {product_name}\n"
             f"Вы съели: {grams:.2f} г.\n"
@@ -328,9 +311,11 @@ async def process_grams(message: Message, state: FSMContext):
         )
         await state.clear()
 
-    except ValueError:
-        # Обработка некорректного ввода
-        await message.reply("Введите корректное числовое значение.")
+    except Exception as e:
+        # Обработка общих ошибок
+        await message.reply("Произошла ошибка. Попробуйте снова.")
+        print(f"Ошибка: {e}")
+
 
 
 # Функция для подключения обработчиков
