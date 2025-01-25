@@ -171,18 +171,33 @@ async def start_lw(message: Message, state: FSMContext):
 
 @router.message(Form.logged_water)
 async def process_lw(message: Message, state: FSMContext):
-    data = await state.get_data()
-    initial_state = float(data.get("logged_water"))
-    water_goal = float(data.get("water_goar"))
-    new_water = float(message.text)
-    u_g = water_goal - new_water
-    current_state = initial_state + new_water
-    await state.update_data(logged_water = current_state)
-    await message.reply(
-        f"Сейчас вы выпили {new_water} мл воды \n"
-        f"Всего было выпито: {current_state} мл воды\n"
-        f"До цели осталось {u_g} мл воды\n"
-    )
+    try:
+        # Получаем данные из состояния
+        data = await state.get_data()
+        initial_state = float(data.get("logged_water", 0))  # По умолчанию 0
+        water_goal = float(data.get("water_goal", 2000))    # Установим 2000 мл по умолчанию
+        
+        # Проверяем ввод пользователя
+        new_water = float(message.text)
+        if new_water <= 0:
+            await message.reply("Введите положительное число.")
+            return
+
+        # Обновляем текущую выпитую воду
+        current_state = initial_state + new_water
+        u_g = water_goal - current_state  # Корректный расчёт оставшейся воды
+
+        # Обновляем состояние
+        await state.update_data(logged_water=current_state)
+
+        # Формируем ответ
+        await message.reply(
+            f"Вы только что выпили: {new_water} мл воды.\n"
+            f"Всего выпито: {current_state} мл воды.\n"
+            f"До цели осталось: {max(u_g, 0)} мл воды."  # Если цель достигнута, выводим 0
+        )
+    except ValueError:
+        await message.reply("Пожалуйста, введите корректное число.")
 
 
 # Функция для подключения обработчиков
