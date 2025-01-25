@@ -1,5 +1,5 @@
 from aiogram import Router
-from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from states import Form
@@ -28,26 +28,23 @@ async def cmd_help(message: Message):
 # FSM: диалог с пользователем
 @router.message(Command("set_profile"))
 async def start_sp(message: Message, state: FSMContext):
-    gender_keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="Мужчина"), KeyboardButton(text="Женщина")]
-        ],
-        resize_keyboard=True
+    gender_keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="Мужчина", callback_data="Мужской")],
+            [InlineKeyboardButton(text="Женщина", callback_data="Женский")],
+        ]
     )
 
     await message.reply("Выберите ваш пол:", reply_markup=gender_keyboard)
     await state.set_state(Form.gender)
 
-@router.message(Form.gender)
-async def process_gender(message: Message, state: FSMContext):
-    gender = message.text
-    if gender not in ["Мужчина", "Женщина"]:
-        await message.reply("Пожалуйста, выберите пол из предложенных вариантов.")
-        return
-
-    await state.update_data(gender=gender)
-    await message.reply("Введите ваш вес (в кг):", reply_markup=ReplyKeyboardRemove())
+@router.callback_query(lambda c: c.data in ["Мужской", "Женский"])
+async def process_gender(callback_query: CallbackQuery, state: FSMContext):
+    gender = callback_query.data  # Получаем значение из callback_data
+    await state.update_data(gender=gender)  # Сохраняем пол в состоянии
+    await callback_query.message.reply("Введите ваш вес (в кг):", reply_markup=ReplyKeyboardRemove())
     await state.set_state(Form.weight)
+    await callback_query.answer() 
 
 @router.message(Form.weight)
 async def process_weight(message: Message, state: FSMContext):
