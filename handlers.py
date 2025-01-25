@@ -74,15 +74,18 @@ async def process_height(message: Message, state: FSMContext):
 @router.message(Form.age)
 async def process_age(message: Message, state: FSMContext):
     await state.update_data(age=message.text)
-    t = """Выберите соответствующий свой уровень активности из следующих:\n
-    "1-2: сидячий образ жизни \n3-4: легкая физ. нагружка 1-3 раза в неделю \n
-    5-6: умеренные тренировки 3-5 раз в неделю \n7-8: интенсивные тренировки 6-7 раз в неделю \n
-    9-10: тяжелая физ. нагрузка или проф. спорт"""
-    await message.reply(text = t, reply_markup=make_column_keyboard(["1-2", "3-4", "5-6", "7-8", "9-10"]))
+    await message.reply("Выберите соответствующий свой уровень активности из следующих: \n"
+                        "1-2: сидячий образ жизни \n"
+                        "3-4: легкая физ. нагружка 1-3 раза в неделю \n"
+                        "5-6: умеренные тренировки 3-5 раз в неделю \n"
+                        "7-8: интенсивные тренировки 6-7 раз в неделю \n"
+                        "9-10: тяжелая физ. нагрузка или проф. спорт")
+    await message.reply(text = "Выберите свой уровень:",
+                        reply_markup=make_column_keyboard(["1-2", "3-4", "5-6", "7-8", "9-10"]))
     await state.set_state(Form.activity)
 
-@router.message(Form.a_time)
-async def process_a_time(message: Message, state: FSMContext):
+@router.message(Form.activity)
+async def process_activity(message: Message, state: FSMContext):
     await state.update_data(activity=message.text)
     await message.reply("В каком городе вы находитесь?", reply_markup=ReplyKeyboardRemove())
     await state.set_state(Form.city)
