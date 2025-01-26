@@ -166,6 +166,7 @@ async def process_activity(message: Message, state: FSMContext):
 
 @router.message(Form.city)
 async def process_city(message: Message, state: FSMContext):
+    city = message.text
     state.update_data(city = message.text)
     data = await state.get_data()
     user_id = message.from_user.id
@@ -176,16 +177,15 @@ async def process_city(message: Message, state: FSMContext):
         height = int(data.get("height"))
         age = int(data.get("age"))
         activity = str(data.get("activity"))
-        city = str(data.get("city"))
+        city = data.get("city")
     except ValueError:
         await message.reply("Некорректные данные. Пожалуйста, начните заново /set_profile.")
         await state.clear()
         return
 
     # Пытаемся получить температуру для города
-    city_en = await translate_yandex(T_TOKEN, city)
     params = {
-        "q": city_en,
+        "q": await translate_yandex(T_TOKEN, city),
         "appid": W_TOKEN,
         "units": "metric",
     }
@@ -234,7 +234,6 @@ async def process_city(message: Message, state: FSMContext):
         f"Возраст: {age} лет\n"
         f"Уровень активности: {activity}\n"
         f"Город: {city}\n"
-        f"Температура: {temperature} °C\n"
         f"Норма воды: {water_goal} мл\n"
         f"Норма калорий: {calories:.2f} ккал.\n\n"
         "Профиль сохранён!"
