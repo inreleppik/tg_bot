@@ -188,6 +188,7 @@ async def process_city(message: Message, state: FSMContext):
                 w = float(w["main"]["temp"])
             else:
                 await message.reply("Не удалось получить данные о погоде. Проверьте название города.")
+                
                 return
 
     if w >= 30:
@@ -214,6 +215,7 @@ async def process_city(message: Message, state: FSMContext):
         f"Норма потребления воды: {water} мл\n"
         f"Норма калорий: {calories} ккал."
     )
+    await state.clear()
 
 @router.message(Command("log_water"))
 async def start_lw(message: Message, state: FSMContext):
@@ -247,6 +249,7 @@ async def process_lw(message: Message, state: FSMContext):
             f"Всего выпито: {current_state} мл воды.\n"
             f"До цели осталось: {max(u_g, 0)} мл воды."  # Если цель достигнута, выводим 0
         )
+        await state.clear()
     except ValueError:
         await message.reply("Пожалуйста, введите корректное число.")
 
