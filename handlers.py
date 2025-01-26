@@ -166,8 +166,7 @@ async def process_activity(message: Message, state: FSMContext):
 
 @router.message(Form.city)
 async def process_city(message: Message, state: FSMContext):
-    city = message.text
-    state.update_data(city = message.text)
+    await state.update_data(city = message.text)
     data = await state.get_data()
     user_id = message.from_user.id
     
