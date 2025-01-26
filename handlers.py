@@ -175,7 +175,7 @@ async def process_city(message: Message, state: FSMContext):
         height = int(data.get("height"))
         age = int(data.get("age"))
         activity = str(data.get("activity"))
-        city = data.get("city")
+        city = str(data.get("city"))
     except ValueError:
         await message.reply("Некорректные данные. Пожалуйста, начните заново /set_profile.")
         await state.clear()
@@ -184,7 +184,7 @@ async def process_city(message: Message, state: FSMContext):
     # Пытаемся получить температуру для города
     city_en = await translate_yandex(T_TOKEN, city)
     params = {
-        "q": city_en,
+        "q": city,
         "appid": W_TOKEN,
         "units": "metric",
     }
