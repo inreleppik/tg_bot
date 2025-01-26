@@ -166,6 +166,7 @@ async def process_activity(message: Message, state: FSMContext):
 
 @router.message(Form.city)
 async def process_city(message: Message, state: FSMContext):
+    state.update_data(city = message.text)
     data = await state.get_data()
     user_id = message.from_user.id
     
@@ -184,7 +185,7 @@ async def process_city(message: Message, state: FSMContext):
     # Пытаемся получить температуру для города
     city_en = await translate_yandex(T_TOKEN, city)
     params = {
-        "q": city,
+        "q": city_en,
         "appid": W_TOKEN,
         "units": "metric",
     }
