@@ -352,37 +352,6 @@ async def start_lwo(message: Message, state: FSMContext):
     )
     await state.set_state(Form.burned_calories)  # следующий шаг
 
-@router.message(Form.burned_calories)
-async def process_wo(message: Message, state: FSMContext):
-    # Считаем, что пользователь ввёл название тренировки, запросим потраченные калории
-    await state.update_data(workout_type=message.text)
-    await message.reply("Сколько калорий вы потратили?")
-    await state.set_state(Form.workout_cals)
-
-@router.message(Form.workout_cals)
-async def process_wo_cals(message: Message, state: FSMContext):
-    user_id = message.from_user.id
-    data = await state.get_data()
-    try:
-        workout_type = data.get("workout_type", "тренировка")
-        burned = float(message.text)
-        if burned <= 0:
-            await message.reply("Введите положительное число.")
-            return
-
-        # Обновляем в глобальном словаре
-        user_data = get_user_storage(user_id)
-        old_burned = float(user_data.get("burned_calories", 0))
-        user_data["burned_calories"] = old_burned + burned
-
-        await message.reply(
-            f"Вы занимались: {workout_type}.\n"
-            f"Калорий потрачено: {burned:.2f}.\n"
-            f"Всего калорий сожжено за сегодня: {user_data['burned_calories']:.2f}."
-        )
-        await state.clear()
-    except ValueError:
-        await message.reply("Введите корректное число.")
 
 # Подключаем роутер
 def setup_handlers(dp):
