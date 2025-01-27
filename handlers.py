@@ -93,17 +93,17 @@ def get_activity_c(level: str):
     return coefs.get(level, 0)
 
 def calculate_calories(weight, activity, duration_minutes):
-    calories_per_kg_per_minute = {
-        "Бег": 0.14,
-        "Ходьба": 0.05,
-        "Велоспорт": 0.12,
-        "Плавание": 0.10,
-        "Йога": 0.03,
-        "Кардио": 0.09,
-        "Танцы": 0.08,
-        "Силовая": 0.04,
+    MET = {
+        "Бег": 9.8,
+        "Ходьба": 3.8,
+        "Велоспорт": 8.0,
+        "Плавание": 6.0,
+        "Йога": 2.5,
+        "Кардио": 7.0,
+        "Танцы": 5.5,
+        "Силовая": 3.3,
     }
-    calories_per_minute = calories_per_kg_per_minute.get(activity, 0) * weight
+    calories_per_minute = MET.get(activity, 0) * 3.5 * weight / 200
     return calories_per_minute * duration_minutes
 
 def calculate_bmr(weight: float, height: float, age: int, gender: str) -> float:
@@ -387,12 +387,12 @@ async def process_wo(message: Message, state: FSMContext):
             weight = int(user_data.get("weight", 0))
             intial_state_w = float(user_data.get("water_goal", 0))
             intial_state_cb = float(user_data.get("burned_calories", 0))
-            burned_calories = calculate_calories(weight, wo_name, minutes)
-            additional_water = 6.67 * minutes
+            burned_calories = int(calculate_calories(weight, wo_name, minutes))
+            additional_water = int(6.67 * minutes)
             user_data["burned_calories"] = intial_state_cb + burned_calories
             user_data["water_goal"] = intial_state_w + additional_water 
 
-            await message.reply(f"{wo_name} {minutes} минут - {burned_calories}. \n"
+            await message.reply(f"{wo_name} {minutes} минут - {burned_calories} ккал. \n"
                                 f"Дополнительно: выпейте {additional_water} мл воды.")
             
             await state.clear()
