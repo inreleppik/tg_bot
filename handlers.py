@@ -101,7 +101,7 @@ def calculate_calories(weight, activity, duration_minutes):
         "Йога": 2.5,
         "Кардио": 7.0,
         "Танцы": 5.5,
-        "Силовая": 3.3,
+        "Силовая": 6.0,
     }
     calories_per_minute = MET.get(activity, 0) * 3.5 * weight / 200
     return calories_per_minute * duration_minutes
@@ -403,6 +403,27 @@ async def process_wo(message: Message, state: FSMContext):
         await message.reply("Произошла ошибка. Попробуйте снова.")
         print(f"Ошибка: {e}")
 
+@router.message(Command("check_progress"))
+async def cmd_cp(message: Message):
+    user_id = message.from_user.id
+    user_data = get_user_storage(user_id)
+    logged_water = int(user_data.get("logged_water", 0))
+    logged_calories = int(user_data.get("logged_calories", 0))
+    burned_calories = int(user_data.get("burned_calories", 0))
+    water_goal = int(user_data.get("water_goal", 0))
+    calories_goal = int(user_data.get("calorie_goal", 0))
+    water_to_drink = water_goal - logged_water
+    calories_balance = logged_calories - burned_calories
+
+    await message.reply("Прогресс: \n"
+                        "Вода: \n"
+                        f"- Выпито: {logged_water} мл из {calories_goal} мл. \n"
+                        f"- Осталось: {water_to_drink} мл. \n"
+                        "\n"
+                        "Калории:"
+                        f"- Потреблено: {logged_calories} ккал из {calories_goal} ккал."
+                        f"- Сожжено: {burned_calories} ккал."
+                        f"- Баланс: {calories_balance} ккал.")
 
 
 # Подключаем роутер
