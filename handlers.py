@@ -92,6 +92,20 @@ def get_activity_c(level: str):
              "9-10": 1.9}
     return coefs.get(level, 0)
 
+def calculate_calories(weight, activity, duration_minutes):
+    calories_per_kg_per_minute = {
+        "Бег": 0.14,
+        "Ходьба": 0.05,
+        "Велоспорт": 0.12,
+        "Плавание": 0.10,
+        "Йога": 0.03,
+        "Кардио": 0.09,
+        "Танцы": 0.08,
+        "Силовая": 0.04,
+    }
+    calories_per_minute = calories_per_kg_per_minute.get(activity, 0) * weight
+    return calories_per_minute * duration_minutes
+
 def calculate_bmr(weight: float, height: float, age: int, gender: str) -> float:
     if gender == 'Мужской':
         return 10 * weight + 6.25 * height - 5 * age + 5
@@ -339,17 +353,56 @@ async def process_logged_calories(message: Message, state: FSMContext):
         await message.reply("Произошла ошибка. Попробуйте снова.")
         print(f"Ошибка: {e}")
 
-# === Учёт потраченных калорий (тренировки) ===
 @router.message(Command("log_workout"))
 async def start_lwo(message: Message, state: FSMContext):
-    # Для примера сделаем простой вариант: один ввод на название или тип тренировки,
-    # дальше пользователь вводит, сколько калорий потратил.
     await message.reply(
         "Какой вид тренировки вы выполняли?\n"
-        "(Например: бег, плавание, фитнес и т. д.)",
-        reply_markup=ReplyKeyboardRemove()
+        "(Выберите наиболее подходящий среди следующих)",
+        reply_markup=make_column_keyboard(['Бег', 'Ходьба', 'Велоспорт', 'Плавание',
+                                            'Йога', 'Кардио', 'Танцы', 'Силовая'])
     )
-    await state.set_state(Form.burned_calories)  # следующий шаг
+    await state.set_state(Form.burned_calories) 
+
+@router.message(Form.burned_calories)
+async def process_wo(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    data = await state.get_data()
+
+    try:
+
+        if "step" not in data:
+            wo_name = message.text
+
+            await state.update_data(step = "workout", wo_name = wo_name)
+            await message.reply("Введите количество времени в минутах, которое вы потратили на свою тренировку:",
+                                reply_markup=ReplyKeyboardRemove())
+            
+        else:
+            minutes = int(message.text)
+            if minutes <= 0:
+                await message.reply("Введите положительное число минут.")
+                return
+            wo_name = data['wo_name']
+            user_data = get_user_storage(user_id)
+            weight = int(user_data.get("weight", 0))
+            intial_state_w = float(user_data.get("water_goal", 0))
+            intial_state_cb = float(user_data.get("burned_calories", 0))
+            burned_calories = calculate_calories(weight, wo_name, minutes)
+            additional_water = 6.67 * minutes
+            user_data["burned_calories"] = intial_state_cb + burned_calories
+            user_data["water_goal"] = intial_state_w + additional_water 
+
+            await message.reply(f"{wo_name} {minutes} минут - {burned_calories}. \n"
+                                f"Дополнительно: выпейте {additional_water} мл воды.")
+            
+            await state.clear()
+
+    except ValueError:
+        await message.reply("Введите корректное число минут.")
+    except Exception as e:
+        await message.reply("Произошла ошибка. Попробуйте снова.")
+        print(f"Ошибка: {e}")
+
 
 
 # Подключаем роутер
