@@ -7,6 +7,9 @@ from config import W_TOKEN, WB_URL, T_TOKEN, CN_TOKEN
 import aiohttp
 import os
 import matplotlib.pyplot as plt
+import matplotlib
+
+matplotlib.use('Agg')  
 
 # Глобальное хранилище пользователей
 users = {}  # { user_id: { "gender": ..., "weight": ..., ... } }
