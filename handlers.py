@@ -7,15 +7,9 @@ from config import W_TOKEN, WB_URL, T_TOKEN, CN_TOKEN
 import aiohttp
 
 
-# Глобальное хранилище пользователей
-users = {}  # { user_id: { "gender": ..., "weight": ..., ... } }
+users = {} 
 
 def get_user_storage(user_id: int) -> dict:
-    """
-    Вспомогательная функция:
-    Если в словаре users нет записи для данного user_id – создаём пустую.
-    Возвращаем словарь, где будут храниться все данные по пользователю.
-    """
     if user_id not in users:
         users[user_id] = {
             "gender": None,
@@ -33,24 +27,15 @@ def get_user_storage(user_id: int) -> dict:
     return users[user_id]
 
 def make_row_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
-    """
-    Создаёт реплай-клавиатуру с кнопками в один ряд
-    """
     row = [KeyboardButton(text=item) for item in items]
     return ReplyKeyboardMarkup(keyboard=[row], resize_keyboard=True)
 
 def make_column_keyboard(items: list[str]) -> ReplyKeyboardMarkup:
-    """
-    Создаёт реплай-клавиатуру с кнопками, расположенными в две колонки
-    """
     rows = [items[i:i+2] for i in range(0, len(items), 2)]
     keyboard = [[KeyboardButton(text=item) for item in row] for row in rows]
     return ReplyKeyboardMarkup(keyboard=keyboard, resize_keyboard=True)
 
 async def translate_yandex(api_key: str, text: str, source_language: str = "ru", target_language: str = "en"):
-    """
-    Асинхронная функция для перевода текста с использованием Yandex Translator API.
-    """
     url = "https://translate.api.cloud.yandex.net/translate/v2/translate"
     headers = {
         "Content-Type": "application/json",
@@ -71,9 +56,6 @@ async def translate_yandex(api_key: str, text: str, source_language: str = "ru",
                 return f"Ошибка: {response.status}, {error}"
 
 async def get_calories_data_async(product_name: str, api_key: str):
-    """
-    Асинхронный запрос к Calorieninjas API для получения данных о калорийности продукта.
-    """
     url = "https://api.calorieninjas.com/v1/nutrition"
     headers = {"X-Api-Key": api_key}
     params = {"query": product_name}
@@ -132,7 +114,6 @@ async def cmd_help(message: Message):
         "/log_workout - Учёт потраченных калорий\n"
     )
 
-# === Настройка профиля (FSM) ===
 @router.message(Command("set_profile"))
 async def start_sp(message: Message, state: FSMContext):
     await message.reply(
@@ -197,7 +178,6 @@ async def process_city(message: Message, state: FSMContext):
         await state.clear()
         return
 
-    # Пытаемся получить температуру для города
     params = {
         "q": await translate_yandex(T_TOKEN, city),
         "appid": W_TOKEN,
@@ -213,7 +193,6 @@ async def process_city(message: Message, state: FSMContext):
                 await state.clear()
                 return
 
-    # Рассчитываем норму воды с учётом температуры
     if temperature >= 30:
         water_goal = weight * 30 + 1000
     elif temperature >= 25:
@@ -221,11 +200,8 @@ async def process_city(message: Message, state: FSMContext):
     else:
         water_goal = weight * 30
 
-    # Рассчитываем норму калорий
     calories = calculate_bmr(weight, height, age, gender)
     calories *= get_activity_c(activity)
-
-    # Теперь сохраняем ВСЕ данные в глобальном словаре users
     user_data = get_user_storage(user_id)
     user_data["gender"] = gender
     user_data["weight"] = weight
@@ -235,7 +211,6 @@ async def process_city(message: Message, state: FSMContext):
     user_data["city"] = city
     user_data["water_goal"] = water_goal
     user_data["calorie_goal"] = calories
-    # Сбрасываем/обнуляем счётчики на всякий случай
     user_data["logged_water"] = 0
     user_data["logged_calories"] = 0
     user_data["burned_calories"] = 0
@@ -254,7 +229,6 @@ async def process_city(message: Message, state: FSMContext):
     )
     await state.clear()
 
-# === Учёт выпитой воды ===
 @router.message(Command("log_water"))
 async def start_lw(message: Message, state: FSMContext):
     await message.reply("Введите выпитое вами количество воды в мл:")
@@ -264,7 +238,6 @@ async def start_lw(message: Message, state: FSMContext):
 async def process_lw(message: Message, state: FSMContext):
     user_id = message.from_user.id
     try:
-        # Берём данные пользователя из глобального словаря
         user_data = get_user_storage(user_id)
         initial_water = float(user_data.get("logged_water", 0))
         water_goal = float(user_data.get("water_goal", 2000))
@@ -275,7 +248,7 @@ async def process_lw(message: Message, state: FSMContext):
             return
 
         current_water = initial_water + new_water
-        user_data["logged_water"] = current_water  # сохраняем обновлённое значение
+        user_data["logged_water"] = current_water 
         
         remainder = water_goal - current_water
         if remainder < 0:
@@ -290,7 +263,6 @@ async def process_lw(message: Message, state: FSMContext):
     except ValueError:
         await message.reply("Пожалуйста, введите корректное число.")
 
-# === Учёт потреблённых калорий (еда) ===
 @router.message(Command("log_food"))
 async def start_lf(message: Message, state: FSMContext):
     await message.reply("Какой продукт вы употребили?")
@@ -302,17 +274,14 @@ async def process_logged_calories(message: Message, state: FSMContext):
     data = await state.get_data()
     
     try:
-        # Если нет шага в data – значит, это первый ввод (название продукта)
         if "step" not in data:
             product_name = message.text
             
-            # Переводим название продукта на английский
             product_eng = await translate_yandex(T_TOKEN, product_name)
             if not product_eng:
                 await message.reply("Не удалось перевести название продукта. Попробуйте снова.")
                 return
             
-            # Получаем данные из API
             product_data = await get_calories_data_async(product_eng, CN_TOKEN)
             if not product_data or not product_data[0].get("calories"):
                 await message.reply("Не нашёл информацию о продукте. Уточните название.")
@@ -320,7 +289,6 @@ async def process_logged_calories(message: Message, state: FSMContext):
 
             calories_per_100g = product_data[0]["calories"]
             
-            # Переходим ко второму шагу
             await state.update_data(step="grams", calories_per_100g=calories_per_100g)
             await message.reply(
                 f"Продукт: {product_name}\n"
@@ -328,7 +296,6 @@ async def process_logged_calories(message: Message, state: FSMContext):
                 f"Сколько граммов вы съели?"
             )
         else:
-            # Шаг ввода количества граммов
             grams = float(message.text)
             if grams <= 0:
                 await message.reply("Введите положительное число граммов.")
@@ -337,7 +304,6 @@ async def process_logged_calories(message: Message, state: FSMContext):
             calories_per_100g = data["calories_per_100g"]
             total_calories = (calories_per_100g * grams) / 100
 
-            # Достаём хранилище пользователя и обновляем
             user_data = get_user_storage(user_id)
             old_cals = float(user_data.get("logged_calories", 0))
             user_data["logged_calories"] = old_cals + total_calories
@@ -426,6 +392,5 @@ async def cmd_cp(message: Message):
                         f"- Баланс: {calories_balance} ккал.")
 
 
-# Подключаем роутер
 def setup_handlers(dp):
     dp.include_router(router)
