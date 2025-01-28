@@ -112,6 +112,7 @@ async def cmd_help(message: Message):
         "/log_water - Учёт выпитой воды\n"
         "/log_food - Учёт потреблённых калорий\n"
         "/log_workout - Учёт потраченных калорий\n"
+        "/check_progress - Показать текущий прогресс"
     )
 
 @router.message(Command("set_profile"))
