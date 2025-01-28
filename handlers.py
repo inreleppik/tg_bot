@@ -5,11 +5,7 @@ from aiogram.fsm.context import FSMContext
 from states import Form
 from config import W_TOKEN, WB_URL, T_TOKEN, CN_TOKEN
 import aiohttp
-import os
-import matplotlib.pyplot as plt
-import matplotlib
 
-matplotlib.use('Agg')  
 
 # Глобальное хранилище пользователей
 users = {}  # { user_id: { "gender": ..., "weight": ..., ... } }
@@ -410,7 +406,6 @@ async def process_wo(message: Message, state: FSMContext):
 
 @router.message(Command("check_progress"))
 async def cmd_cp(message: Message):
-    # Получение данных пользователя
     user_id = message.from_user.id
     user_data = get_user_storage(user_id)
     logged_water = int(user_data.get("logged_water", 0))
@@ -421,43 +416,14 @@ async def cmd_cp(message: Message):
     water_to_drink = water_goal - logged_water
     calories_balance = logged_calories - burned_calories
 
-    # Текстовое сообщение
-    text = (
-        "Прогресс: \n"
-        f"Вода: \n- Выпито: {logged_water} мл из {water_goal} мл. \n"
-        f"- Осталось: {water_to_drink} мл. \n\n"
-        "Калории: \n"
-        f"- Потреблено: {logged_calories} ккал из {calories_goal} ккал. \n"
-        f"- Сожжено: {burned_calories} ккал. \n"
-        f"- Баланс: {calories_balance} ккал."
-    )
-
-    # Создание графика
-    file_path = f"progress_{user_id}.png"  # Уникальное имя для каждого пользователя
-    plt.figure(figsize=(8, 6))
-
-    # График прогресса воды
-    plt.bar(["Выпито воды", "Цель по воде"], [logged_water, water_goal], color=["blue", "lightblue"], label="Вода")
-    # График прогресса калорий
-    plt.bar(["Потреблено калорий", "Цель по калориям"], [logged_calories, calories_goal], color=["red", "lightcoral"], label="Калории")
-    plt.title("Прогресс пользователя")
-    plt.ylabel("Количество")
-    plt.legend()
-    plt.grid(axis="y", linestyle="--", alpha=0.7)
-
-    # Сохранение графика
-    plt.savefig(file_path)
-    plt.close()
-
-    try:
-        # Отправка текстового сообщения и графика
-        await message.reply(text)
-        with open(file_path, "rb") as file:
-            await message.answer_photo(photo=file)
-    finally:
-        # Удаление графика
-        if os.path.exists(file_path):
-            os.remove(file_path)
+    await message.reply("Прогресс: \n"
+                        "Вода: \n"
+                        f"- Выпито: {logged_water} мл из {calories_goal} мл. \n"
+                        f"- Осталось: {water_to_drink} мл. \n \n"
+                        "Калории: \n"
+                        f"- Потреблено: {logged_calories} ккал из {calories_goal} ккал. \n"
+                        f"- Сожжено: {burned_calories} ккал. \n"
+                        f"- Баланс: {calories_balance} ккал.")
 
 
 # Подключаем роутер
