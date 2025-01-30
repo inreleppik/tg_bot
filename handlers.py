@@ -385,7 +385,7 @@ async def cmd_cp(message: Message):
 
     await message.reply("Прогресс: \n"
                         "Вода: \n"
-                        f"- Выпито: {logged_water} мл из {calories_goal} мл. \n"
+                        f"- Выпито: {logged_water} мл из {water_goal} мл. \n"
                         f"- Осталось: {water_to_drink} мл. \n \n"
                         "Калории: \n"
                         f"- Потреблено: {logged_calories} ккал из {calories_goal} ккал. \n"
